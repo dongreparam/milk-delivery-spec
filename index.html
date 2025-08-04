@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Spec: Milk Delivery Reconciliation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony -->
+    <!-- Application Structure Plan: The application uses a linear, top-to-bottom flowchart structure to visually represent the chronological "day in the life" of a delivery worker. This structure was chosen because it's the most intuitive way to explain a step-by-step process. The user scrolls down to follow the journey. Key workflow steps are now paired with a visual wireframe of the corresponding mobile app screen, providing immediate context. Interactive elements (customer card tabs, charts) allow the user to actively explore the process and its data outcomes. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Mobile App Screens -> Goal: Inform/Visualize -> Viz: HTML/CSS Wireframes -> Interaction: Dynamic content update on tab click, animated transition on button click -> Justification: To provide a clear, interactive, and realistic visual representation of the mobile UI at each step of the workflow. -> Library/Method: JS/HTML/Tailwind/CSS.
+        - Report Info: User Roles -> Goal: Inform -> Viz: Styled Cards with Icons -> Interaction: None -> Justification: Clear, immediate introduction of the actors involved. -> Library/Method: HTML/Tailwind.
+        - Report Info: Customer Delivery Step -> Goal: Engage/Inform -> Viz: Interactive Customer Card -> Interaction: Clickable tabs to switch customer data -> Justification: Prevents information overload by showing the repetitive task for one customer at a time. -> Library/Method: JS/HTML/Tailwind.
+        - Report Info: Final Summary -> Goal: Compare/Inform -> Viz: Doughnut Chart -> Interaction: Hover tooltips -> Justification: Visually summarizes the financial outcome (payments collected). -> Library/Method: Chart.js.
+        - Report Info: Data Reconciliation -> Goal: Compare -> Viz: Dynamic Bar Chart -> Interaction: Dropdown to filter by worker -> Justification: Provides the final "proof" of the system's value by visualizing if stock numbers balance out. -> Library/Method: Chart.js.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8F7F4;
+            color: #4A4A4A;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .timeline-line {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background-color: #D8D8D8;
+            transform: translateX(-50%);
+        }
+        .timeline-step {
+            position: relative;
+            z-index: 1;
+        }
+        .timeline-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #4A90E2;
+            border: 3px solid #F8F7F4;
+        }
+        .wireframe-container {
+            background-color: #1a1a1a;
+            border-radius: 20px;
+            padding: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            width: 280px;
+            margin: 20px auto 0;
+            transition: transform 0.4s ease-in-out, opacity 0.4s ease-in-out;
+        }
+        .wireframe-container.exiting {
+            opacity: 0;
+            transform: translateX(-30px) scale(0.95);
+        }
+        .wireframe-screen {
+            background-color: #f0f2f5;
+            border-radius: 10px;
+            padding: 15px;
+            height: 480px;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto px-4 py-8 md:py-12">
+
+        <header class="text-center mb-12 md:mb-16">
+            <h1 class="text-3xl md:text-5xl font-bold text-gray-800">Delivery Reconciliation Module</h1>
+            <p class="mt-4 text-lg md:text-xl text-gray-600">An interactive visual specification with mobile app wireframes.</p>
+        </header>
+
+        <section id="roles" class="mb-16">
+            <h2 class="text-2xl md:text-3xl font-bold text-center mb-8">User Roles & Responsibilities</h2>
+            <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                    <h3 class="text-xl font-bold flex items-center"><span class="text-2xl mr-3">👷</span> Worker</h3>
+                    <p class="mt-2 text-gray-600">Performs the end-to-end daily delivery and reconciliation cycle using the mobile application.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                    <h3 class="text-xl font-bold flex items-center"><span class="text-2xl mr-3">👑</span> Admin</h3>
+                    <p class="mt-2 text-gray-600">Reviews the worker's completed daily submission via the web app and confirms the data.</p>
+                </div>
+            </div>
+        </section>
+
+        <hr class="my-16 border-gray-300">
+
+        <section id="workflow">
+            <h2 class="text-2xl md:text-3xl font-bold text-center mb-12">The Interactive Workflow & Wireframes</h2>
+            
+            <div class="relative max-w-5xl mx-auto">
+                <div class="timeline-line hidden lg:block" style="left: 50%;"></div>
+
+                <!-- Step 1: Login -->
+                <div class="timeline-step lg:flex items-center mb-12">
+                    <div class="lg:w-1/2 lg:pr-8">
+                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h3 class="font-bold text-xl text-gray-800">Step 1: Secure Login</h3>
+                            <p class="mt-2 text-gray-600">The worker opens the mobile app and logs in with their unique ID to start the day.</p>
+                        </div>
+                    </div>
+                    <div class="hidden lg:block w-20"><div class="timeline-dot" style="left: -10px;"></div></div>
+                    <div class="lg:w-1/2 lg:pl-8">
+                        <div class="wireframe-container">
+                            <div class="wireframe-screen justify-center">
+                                <h4 class="text-center text-xl font-bold text-gray-800 mb-6">Milk Distribution</h4>
+                                <input type="text" placeholder="Worker ID" class="w-full p-2 border rounded mb-3 bg-white text-sm" disabled>
+                                <input type="password" placeholder="Password / PIN" class="w-full p-2 border rounded mb-6 bg-white text-sm" disabled>
+                                <button class="w-full bg-blue-500 text-white p-3 rounded-lg font-bold">Login</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Morning Stock -->
+                <div class="timeline-step lg:flex flex-row-reverse items-center mb-12">
+                    <div class="lg:w-1/2 lg:pl-8">
+                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h3 class="font-bold text-xl text-gray-800">Step 2: Morning Stock Entry</h3>
+                            <p class="mt-2 text-gray-600">The worker records the total quantity of each product loaded onto their vehicle.</p>
+                        </div>
+                    </div>
+                    <div class="hidden lg:block w-20"><div class="timeline-dot" style="left: 10px;"></div></div>
+                    <div class="lg:w-1/2 lg:pr-8">
+                        <div class="wireframe-container">
+                            <div class="wireframe-screen">
+                                <h4 class="text-lg font-bold text-gray-800 mb-4">Morning Stock</h4>
+                                <div class="flex-grow overflow-y-auto pr-2">
+                                    <div class="flex justify-between items-center mb-3 bg-white p-2 rounded-lg border">
+                                        <span class="text-sm">Saanchi Gold</span>
+                                        <input type="number" value="50" class="w-16 text-center bg-gray-200 rounded p-1 text-sm" disabled>
+                                    </div>
+                                    <div class="flex justify-between items-center mb-3 bg-white p-2 rounded-lg border">
+                                        <span class="text-sm">Standard Milk</span>
+                                        <input type="number" value="100" class="w-16 text-center bg-gray-200 rounded p-1 text-sm" disabled>
+                                    </div>
+                                </div>
+                                <button class="w-full bg-blue-500 text-white p-3 rounded-lg font-bold mt-4">Start Deliveries</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Customer Delivery -->
+                <div class="timeline-step lg:flex items-center mb-12">
+                    <div class="lg:w-1/2 lg:pr-8">
+                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h3 class="font-bold text-xl text-gray-800">Step 3: Customer Delivery</h3>
+                            <p class="mt-2 text-gray-600">The app presents a card for each customer. The worker records items delivered and payments collected. <strong class="text-blue-600">Click tabs below to see the wireframe change.</strong></p>
+                             <div class="mt-4 bg-gray-50 p-4 rounded-lg border">
+                                <div class="flex border-b mb-4">
+                                    <button id="customer-a-tab" class="px-4 py-2 font-semibold text-sm bg-blue-500 text-white rounded-t-lg">Customer A</button>
+                                    <button id="customer-b-tab" class="px-4 py-2 font-semibold text-sm text-gray-600">Customer B</button>
+                                </div>
+                                <div id="customer-card"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hidden lg:block w-20"><div class="timeline-dot" style="left: -10px;"></div></div>
+                    <div class="lg:w-1/2 lg:pl-8">
+                        <div id="customer-delivery-wireframe" class="wireframe-container">
+                            <!-- JS will populate this -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: End-of-Day Returns -->
+                 <div class="timeline-step lg:flex flex-row-reverse items-center mb-12">
+                    <div class="lg:w-1/2 lg:pl-8">
+                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h3 class="font-bold text-xl text-gray-800">Step 4: End-of-Day Returns</h3>
+                            <p class="mt-2 text-gray-600">After the last delivery, the worker records any unsold products being returned to inventory.</p>
+                        </div>
+                    </div>
+                    <div class="hidden lg:block w-20"><div class="timeline-dot" style="left: 10px;"></div></div>
+                    <div class="lg:w-1/2 lg:pr-8">
+                        <div class="wireframe-container">
+                            <div class="wireframe-screen">
+                                <h4 class="text-lg font-bold text-gray-800 mb-4">Returned Stock</h4>
+                                <div class="flex-grow overflow-y-auto pr-2">
+                                    <div class="flex justify-between items-center mb-3 bg-white p-2 rounded-lg border">
+                                        <span class="text-sm">Saanchi Gold</span>
+                                        <input type="number" value="2" class="w-16 text-center bg-gray-200 rounded p-1 text-sm" disabled>
+                                    </div>
+                                    <div class="flex justify-between items-center mb-3 bg-white p-2 rounded-lg border">
+                                        <span class="text-sm">Standard Milk</span>
+                                        <input type="number" value="5" class="w-16 text-center bg-gray-200 rounded p-1 text-sm" disabled>
+                                    </div>
+                                </div>
+                                <button class="w-full bg-blue-500 text-white p-3 rounded-lg font-bold mt-4">Go to Summary</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5: Final Review -->
+                <div class="timeline-step lg:flex items-center mb-12">
+                     <div class="lg:w-1/2 lg:pr-8">
+                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h3 class="font-bold text-xl text-gray-800">Step 5: Final Submission</h3>
+                            <p class="mt-2 text-gray-600">A final summary shows all activity. The worker reviews and submits their report for the day.</p>
+                            <div class="chart-container mt-4">
+                                <canvas id="summaryChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hidden lg:block w-20"><div class="timeline-dot" style="left: -10px;"></div></div>
+                    <div class="lg:w-1/2 lg:pl-8">
+                         <div class="wireframe-container">
+                            <div class="wireframe-screen">
+                                <h4 class="text-lg font-bold text-gray-800 mb-4">Daily Summary</h4>
+                                <div class="flex-grow overflow-y-auto pr-2 text-xs space-y-3">
+                                    <div class="bg-white p-2 rounded border"><strong>Sent:</strong> 50 Gold, 100 Standard</div>
+                                    <div class="bg-white p-2 rounded border"><strong>Delivered:</strong> 48 Gold, 95 Standard</div>
+                                    <div class="bg-white p-2 rounded border"><strong>Returned:</strong> 2 Gold, 5 Standard</div>
+                                    <div class="bg-white p-2 rounded border text-green-600 font-bold">Payments: ₹2500</div>
+                                </div>
+                                <button class="w-full bg-green-500 text-white p-3 rounded-lg font-bold mt-4">Final Submit for Day</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 6: Admin Action -->
+                <div class="timeline-step lg:flex flex-row-reverse items-center">
+                     <div class="lg:w-1/2 lg:pl-8">
+                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h3 class="font-bold text-xl text-gray-800">Admin Action: Review & Confirm</h3>
+                            <p class="mt-2 text-gray-600 mb-4">The admin receives the submission, reviews it for discrepancies, and confirms the data to update the system.</p>
+                            <div class="bg-gray-50 p-4 rounded-lg border">
+                                <div id="admin-message" class="text-center font-semibold mb-4 h-6"></div>
+                                <div class="flex justify-center gap-4">
+                                    <button id="accept-btn" class="px-6 py-2 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600 transition">Accept</button>
+                                    <button id="reject-btn" class="px-6 py-2 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition">Reject</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hidden lg:block w-20"><div class="timeline-dot bg-green-500" style="left: 10px;"></div></div>
+                    <div class="lg:w-1/2 lg:pr-8">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <hr class="my-16 border-gray-300">
+
+        <section id="reconciliation" class="text-center">
+            <h2 class="text-2xl md:text-3xl font-bold text-center mb-4">Data Reconciliation Dashboard</h2>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600 mb-8">This chart provides the final proof of the system's value. It visually confirms if the worker's stock numbers balance out. The 'Sent' bar should equal the combined 'Delivered' + 'Returned' bar. Select a worker to see their data.</p>
+            <div class="max-w-xl mx-auto mb-8">
+                <select id="worker-select" class="w-full p-3 border border-gray-300 rounded-lg bg-white shadow-sm">
+                    <option value="worker1">Worker 1 (Ramesh)</option>
+                    <option value="worker2">Worker 2 (Suresh)</option>
+                </select>
+            </div>
+            <div class="chart-container h-[400px] max-h-[450px]">
+                <canvas id="reconciliationChart"></canvas>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const mockData = {
+                customerA: {
+                    name: 'Anand Sweets',
+                    type: 'B2B Customer',
+                    address: '123, MG Road, Indore',
+                    items: [
+                        { product: 'Saanchi Gold', qty: 10 },
+                        { product: 'Standard Milk', qty: 20 }
+                    ],
+                    payment: 1500
+                },
+                customerB: {
+                    name: 'Mrs. Sharma',
+                    type: 'B2C Customer',
+                    address: '45, Scheme 78, Indore',
+                    items: [
+                        { product: 'Saanchi Gold', qty: 1 }
+                    ],
+                    payment: 0
+                },
+                summary: {
+                    paymentsCollected: 2500,
+                    paymentsPending: 1800
+                },
+                reconciliation: {
+                    worker1: {
+                        labels: ['Saanchi Gold', 'Standard Milk'],
+                        sent: [50, 100],
+                        delivered: [48, 95],
+                        returned: [2, 5]
+                    },
+                    worker2: {
+                        labels: ['Saanchi Gold', 'Standard Milk'],
+                        sent: [60, 80],
+                        delivered: [55, 78],
+                        returned: [4, 2]
+                    }
+                }
+            };
+
+            const customerCardEl = document.getElementById('customer-card');
+            const customerATab = document.getElementById('customer-a-tab');
+            const customerBTab = document.getElementById('customer-b-tab');
+            const wireframeContainer = document.getElementById('customer-delivery-wireframe');
+            let activeCustomer = 'A';
+
+            function renderCustomerCard(customer) {
+                const itemsHtml = customer.items.map(item => `
+                    <div class="flex justify-between text-sm mb-1">
+                        <span>${item.product}</span>
+                        <span class="font-semibold">${item.qty} Pkt</span>
+                    </div>
+                `).join('');
+
+                customerCardEl.innerHTML = `
+                    <h4 class="font-bold text-lg mb-2">${customer.name} (${customer.type})</h4>
+                    <div class="mb-3">${itemsHtml}</div>
+                    <div class="border-t pt-3">
+                        <div class="flex justify-between items-center">
+                            <span class="font-semibold">Payment Received:</span>
+                            <span class="text-lg font-bold ${customer.payment > 0 ? 'text-green-600' : 'text-red-600'}">₹${customer.payment}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function renderWireframe(customer) {
+                const itemsHtml = customer.items.map(item => `<p>${item.product}: ${item.qty} Pkt</p>`).join('');
+                wireframeContainer.innerHTML = `
+                    <div class="wireframe-screen">
+                        <h4 class="text-lg font-bold text-gray-800 mb-1">${customer.name}</h4>
+                        <p class="text-xs text-gray-500 mb-3">${customer.address}</p>
+                        <div class="bg-white p-2 rounded-lg border mb-3">
+                            <p class="text-sm font-semibold mb-2">Delivered Items</p>
+                            <div class="text-xs space-y-1">${itemsHtml}</div>
+                        </div>
+                        <div class="bg-white p-2 rounded-lg border mb-3">
+                            <p class="text-sm font-semibold mb-2">Add Item</p>
+                            <select class="w-full p-1 border rounded bg-white text-xs mb-2" disabled><option>Select Product</option></select>
+                            <input type="number" placeholder="Qty" class="w-full p-1 border rounded bg-white text-xs" disabled>
+                        </div>
+                        <div class="bg-white p-2 rounded-lg border">
+                            <p class="text-sm font-semibold mb-2">Collect Payment</p>
+                            <input type="number" placeholder="Amount Received" class="w-full p-1 border rounded bg-white text-xs" disabled>
+                        </div>
+                        <div class="flex-grow"></div>
+                        <button id="wireframe-confirm-btn" class="w-full bg-blue-500 text-white p-3 rounded-lg font-bold mt-4">Confirm & Next</button>
+                    </div>
+                `;
+            }
+            
+            function setActiveCustomer(customerKey) {
+                const customerData = customerKey === 'A' ? mockData.customerA : mockData.customerB;
+                activeCustomer = customerKey;
+                renderCustomerCard(customerData);
+                renderWireframe(customerData);
+
+                if (customerKey === 'A') {
+                    customerATab.classList.add('bg-blue-500', 'text-white');
+                    customerATab.classList.remove('text-gray-600');
+                    customerBTab.classList.remove('bg-blue-500', 'text-white');
+                    customerBTab.classList.add('text-gray-600');
+                } else {
+                    customerBTab.classList.add('bg-blue-500', 'text-white');
+                    customerBTab.classList.remove('text-gray-600');
+                    customerATab.classList.remove('bg-blue-500', 'text-white');
+                    customerATab.classList.add('text-gray-600');
+                }
+            }
+
+            customerATab.addEventListener('click', () => setActiveCustomer('A'));
+            customerBTab.addEventListener('click', () => setActiveCustomer('B'));
+
+            wireframeContainer.addEventListener('click', (e) => {
+                if (e.target && e.target.id === 'wireframe-confirm-btn') {
+                    wireframeContainer.classList.add('exiting');
+                    setTimeout(() => {
+                        const nextCustomer = activeCustomer === 'A' ? 'B' : 'A';
+                        setActiveCustomer(nextCustomer);
+                        wireframeContainer.classList.remove('exiting');
+                    }, 400);
+                }
+            });
+            
+            setActiveCustomer('A');
+
+            const adminMessageEl = document.getElementById('admin-message');
+            document.getElementById('accept-btn').addEventListener('click', () => {
+                adminMessageEl.textContent = 'Submission Accepted! System updated.';
+                adminMessageEl.classList.remove('text-red-500');
+                adminMessageEl.classList.add('text-green-500');
+            });
+            document.getElementById('reject-btn').addEventListener('click', () => {
+                adminMessageEl.textContent = 'Submission Rejected! Flagged for review.';
+                adminMessageEl.classList.remove('text-green-500');
+                adminMessageEl.classList.add('text-red-500');
+            });
+
+            const summaryCtx = document.getElementById('summaryChart').getContext('2d');
+            new Chart(summaryCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Payments Collected', 'Payments Pending'],
+                    datasets: [{
+                        data: [mockData.summary.paymentsCollected, mockData.summary.paymentsPending],
+                        backgroundColor: ['#50E3C2', '#F5A623'],
+                        borderColor: '#F8F7F4',
+                        borderWidth: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        title: { display: true, text: 'Daily Financial Summary' }
+                    }
+                }
+            });
+
+            const reconCtx = document.getElementById('reconciliationChart').getContext('2d');
+            let reconciliationChart;
+
+            function renderReconciliationChart(workerId) {
+                if (reconciliationChart) {
+                    reconciliationChart.destroy();
+                }
+                const data = mockData.reconciliation[workerId];
+                reconciliationChart = new Chart(reconCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [
+                            { label: 'Sent', data: data.sent, backgroundColor: '#4A90E2' },
+                            { label: 'Delivered', data: data.delivered, backgroundColor: '#50E3C2' },
+                            { label: 'Returned', data: data.returned, backgroundColor: '#F5A623' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { stacked: false, title: { display: true, text: 'Products' } },
+                            y: { stacked: false, beginAtZero: true, title: { display: true, text: 'Quantity (Packets)' } }
+                        },
+                        plugins: {
+                            title: { display: true, text: 'Stock Reconciliation by Worker' },
+                            tooltip: { mode: 'index', intersect: false }
+                        }
+                    }
+                });
+            }
+
+            document.getElementById('worker-select').addEventListener('change', (e) => {
+                renderReconciliationChart(e.target.value);
+            });
+
+            renderReconciliationChart('worker1');
+        });
+    </script>
+</body>
+</html>
